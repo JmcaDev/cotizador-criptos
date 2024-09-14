@@ -1,19 +1,34 @@
 import { create } from "zustand"
-import axios from "axios"
-import { CryptoCurrenciesResponseSchema } from "./schemas/crypto-schema"
+import { devtools } from "zustand/middleware"
+import { CryptoCurrency, Pair,CryptoPrice } from "./types"
+import { getCryptos, fetchCurrentCryptoPrice } from "./services/CryptoService"
 
-async function getCryptos(){
-    const url = import.meta.env.VITE_URL_GET_CRYPTOS
-    const {data: {Data}} = await axios(url)
-    const result = CryptoCurrenciesResponseSchema.safeParse(Data)
-    if(result.success){
-        return result.data
-    }
+type CryptoStore = {
+    cryptoCurrencies: CryptoCurrency[],
+    result: CryptoPrice,
+    loading: boolean,
+    fetchCryptos: () => Promise<void>,
+    fetchData: (pair: Pair) => Promise<void>
 }
 
-export const useCryptoStore = create(() => ({
+export const useCryptoStore = create<CryptoStore>()(devtools((set) => ({
+    cryptoCurrencies: [],
+    result: {} as CryptoPrice,
+    loading: false,
     fetchCryptos: async () => {
        const cryptoCurrencies = await getCryptos()
-       console.log(cryptoCurrencies)
+       set(() => ({
+        cryptoCurrencies
+       }))
+    },
+    fetchData: async (pair) => {
+        set(() => ({
+            loading: true
+        }))
+        const result = await fetchCurrentCryptoPrice(pair)
+        set(() => ({
+            result,
+            loading: false
+        }))
     }
-})) 
+})))
